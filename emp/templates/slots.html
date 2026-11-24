@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,slot_table with context %}
+{% block title %}Examination slots{% endblock %}
+{% block body %}
+  {{ heading(g.user.role+' workspace','Examination slots','Open an examination to manage its slots.') }}
+  <section class="panel">
+    {{ slot_table(slots,g.user.role) }}
+  </section>
+{% endblock %}

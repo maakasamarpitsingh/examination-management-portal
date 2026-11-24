@@ -1,0 +1,62 @@
+{% extends 'base.html' %}{% from 'macros.html' import csrf,input,heading with context %}
+{% block title %}{{ {'login':'Sign in','register':'Register','profile':'My profile'}[mode] }}{% endblock %}
+{% block body %}
+  {% if mode!='profile' %}
+    <div class="access">
+      <aside class="access-guide">
+        <h2>Portal access</h2>
+        <dl>
+          <dt>Students</dt><dd>Find a sitting, reserve a seat, and read your published results.</dd>
+          <dt>Examiners</dt><dd>Create slots and evaluate your students once the administrator approves your account.</dd>
+          <dt>Administrators</dt><dd>Use your existing account to manage examinations, timelines, and approvals.</dd>
+        </dl>
+      </aside>
+    {% endif %}
+    <section class="{{ 'accessform' if mode!='profile' else 'panel narrow' }}">
+      {{ heading('Account access' if mode!='profile' else g.user.role+' workspace', {'login':'Sign in','register':'Create an account','profile':'My profile'}[mode], {'login':'Sign in to your examination workspace.','register':'Students can sign in immediately. Examiner accounts require approval.','profile':'Update the details on your examination records.'}[mode]) }}
+      {% if error %}<div class="alert alert-warning" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" class="formgrid">
+        {{ csrf() }}
+        {% if mode=='register' %}
+          <label class="field span">
+            Account type
+            <select name="role" class="form-select">
+              <option value="student">Student</option>
+              <option value="examiner">Examiner</option>
+            </select>
+          </label>
+        {% endif %}
+        {% if mode!='login' %}{{ input('name','Full name',g.user.name if mode=='profile' else '') }}{% endif %}
+        {{ input('email','Email address',g.user.email if mode=='profile' else '', 'email') }}
+        {% if mode!='profile' %}
+          <label class="field">
+            Password
+            <input class="form-control"
+                   type="password"
+                   name="password"
+                   autocomplete="{{ 'current-password' if mode=='login' else 'new-password' }}"
+                   {% if mode=='register' %}minlength="8" placeholder="At least 8 characters"{% endif %}
+                   required>
+          </label>
+        {% endif %}
+        {% if mode!='login' %}
+          {{ input('department','Department',g.user.department if mode=='profile' else '',required=mode!='profile') }}{{ input('contact','Contact number (optional)',g.user.contact if mode=='profile' else '',type='tel',required=false) }}
+        {% endif %}
+        <div class="span">
+          <button class="btn btn-primary">
+            {{ {'login':'Sign in →','register':'Create account','profile':'Save profile'}[mode] }}
+          </button>
+        </div>
+      </form>
+      {% if mode=='login' %}
+        <p class="footnote">
+          New to the portal? <a href="{{ url_for('auth.register') }}">Create an account</a>
+        </p>
+      {% elif mode=='register' %}
+        <p class="footnote">
+          Already registered? <a href="{{ url_for('auth.login') }}">Sign in</a>
+        </p>
+      {% endif %}
+    </section>
+    {% if mode!='profile' %}</div>{% endif %}
+{% endblock %}

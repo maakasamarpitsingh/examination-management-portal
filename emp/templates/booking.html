@@ -1,0 +1,104 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge,action with context %}
+{% block title %}Booking #{{ b.id }}{% endblock %}
+{% block body %}
+  <div class="titlebar">{{ heading('Booking #'+b.id|string,b.exam,b.student) }}{{ badge(b.status) }}</div>
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Scheduled sitting</h2>
+      <a href="{{ url_for('portal.exam',eid=b.exam_id) }}">Examination →</a>
+    </div>
+    <dl class="facts">
+      <div>
+        <dt>Start</dt>
+        <dd>
+          {{ b.start|when }}
+        </dd>
+      </div>
+      <div>
+        <dt>End</dt>
+        <dd>
+          {{ b.end|when }}
+        </dd>
+      </div>
+      <div>
+        <dt>Room / slot</dt>
+        <dd>
+          {{ b.room }} · #{{ b.slot_id }}
+        </dd>
+      </div>
+      <div>
+        <dt>Examiner</dt>
+        <dd>
+          {{ b.examiner }}
+        </dd>
+      </div>
+    </dl>
+    {% if b.status=='Booked' %}
+      {% if g.user.role=='student' and now()<b.booking_end %}
+        <details>
+          <summary>Cancel booking</summary>
+          <p>Cancellation releases your seat. The record stays in your history.</p>
+          {{ action(url_for('portal.cancel',bid=b.id) ,'Confirm cancellation') }}
+        </details>
+      {% elif g.user.role=='admin' %}
+        <a class="btn btn-outline-secondary"
+           href="{{ url_for('portal.reschedule',bid=b.id) }}">Reschedule booking</a>
+      {% elif g.user.role=='examiner' and now()>=b.end %}
+        <a class="btn btn-primary"
+           href="{{ url_for('portal.evaluate',bid=b.id) }}">Evaluate student</a>
+      {% endif %}
+    {% endif %}
+  </section>
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Evaluation</h2>
+      {{ badge('Published' if b.published_at else ('Awaiting publication' if b.status=='Completed' else 'Unpublished') ) }}
+    </div>
+    {% if visible %}
+      <div class="score">
+        {{ b.total }} <small>/ {{ b.maximum }}</small>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Criterion</th>
+              <th>Raw marks</th>
+              <th>Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in scores %}
+              <tr>
+                <td>{{ r.name }}</td>
+                <td>{{ r.mark }} / {{ r.maximum }}</td>
+                <td>{{ r.weight }}%</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <h3>Examiner feedback</h3>
+      <p class="remarks">{{ b.remarks }}</p>
+      {% if b.published_at %}
+        <small>Published {{ b.published_at|when }}</small>
+      {% elif g.user.role=='admin' %}
+        {{ action(url_for('portal.publish',bid=b.id) ,'Publish result',style='btn-primary') }}
+      {% endif %}
+    {% else %}
+      <p class="empty">
+        Marks and feedback will appear here after {{ 'publication' if g.user.role=='student' else 'evaluation' }}.
+      </p>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <h2>Booking history</h2>
+    <ol class="history">
+      {% for ev in history %}
+        <li>
+          <strong>{{ ev.detail }}</strong><small>{{ ev.at|when }} · {{ ev.actor }}</small>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endblock %}

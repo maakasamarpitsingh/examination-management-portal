@@ -1,0 +1,43 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge,action with context %}
+{% block title %}Courses{% endblock %}
+{% block body %}
+  <div class="titlebar">
+    {{ heading('Academic register', 'Courses') }}<a class="btn btn-primary" href="{{ url_for('admin.course_form') }}">Create course</a>
+  </div>
+  <section class="panel">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Course</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in courses %}
+            <tr>
+              <td>
+                {{ c.code }}<small>#{{ c.id }}</small>
+              </td>
+              <td>
+                <strong>{{ c.name }}</strong><small>{{ c.description }}</small>
+              </td>
+              <td>{{ badge('Archived' if c.archived else c.status) }}</td>
+              <td>
+                {% if not c.archived %}
+                  <a href="{{ url_for('admin.course_form',cid=c.id) }}">Edit</a> {{ action(url_for('admin.remove_course',cid=c.id) ,'Archive') }}
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="empty">Create a course to begin scheduling examinations.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

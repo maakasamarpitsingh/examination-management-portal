@@ -1,0 +1,78 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge,action,csrf,input with context %}
+{% set register = {'examiner':'Examiners','student':'Students'}.get(request.args.get('role'), 'People') %}
+{% block title %}{{ register }}{% endblock %}
+{% block body %}
+  {{ heading('Academic register', register) }}
+  <form class="filter">
+    <label>
+      Search
+      <input class="form-control"
+             name="q"
+             value="{{ request.args.get('q', '') }}"
+             placeholder="Name, ID, or email">
+    </label>
+    <label>
+      Role
+      <select class="form-select" name="role">
+        <option value="">All people</option>
+        {% for role in ['examiner','student'] %}
+          <option value="{{ role }}"
+                  {% if request.args.get('role')==role %}selected{% endif %}>{{ role|title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn btn-primary">Search</button>
+    <a href="{{ url_for('admin.people') }}">Clear</a>
+  </form>
+  <section class="panel">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Contact</th>
+            <th>Department</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in people %}
+            <tr>
+              <td>
+                <strong>{{ u.name }}</strong><small>#{{ u.id }}</small>
+              </td>
+              <td>
+                {{ u.email }}<small>{{ u.contact }}</small>
+              </td>
+              <td>{{ u.department }}</td>
+              <td>{{ u.role|title }}</td>
+              <td>{{ badge(u.status) }}</td>
+              <td>
+                {% if u.role=='examiner' %}
+                  {{ action(url_for('admin.user_status',uid=u.id) ,'Deactivate' if u.status=='Active' else ('Approve' if u.status=='Pending' else 'Reactivate'),{'status':'Inactive' if u.status=='Active' else 'Active'}) }}
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6" class="empty">No matching people.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel">
+    <details>
+      <summary>Add an approved examiner</summary>
+      <form method="post" class="formgrid">
+        {{ csrf() }}{{ input('name', 'Full name') }}{{ input('email','Email address',type='email') }}{{ input('department', 'Department') }}{{ input('contact','Contact number (optional)',required=false) }}{{ input('password','Initial password (8+ characters)',type='password') }}
+        <div class="span">
+          <button class="btn btn-primary">Add examiner</button>
+        </div>
+      </form>
+    </details>
+  </section>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge,action,csrf,input,area,slot_table with context %}
+{% block title %}{{ e.name }}{% endblock %}
+{% block body %}
+  {% set admin = g.user.role=='admin' %}{% set writable = admin and not e.archived and not e.completed %}
+  <div class="titlebar">
+    {{ heading(e.code+' / Examination #'+e.id|string,e.name,e.course_name) }}{{ badge(phase(e) ) }}
+  </div>
+  <div class="facts">
+    <div>
+      <small>Exam type</small><strong>{{ e.kind }}</strong>
+    </div>
+    <div>
+      <small>Duration</small><strong>{{ e.duration }} minutes</strong>
+    </div>
+    <div>
+      <small>Maximum marks</small><strong>{{ e.maximum }}</strong>
+    </div>
+  </div>
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Examination timeline</h2>
+      {% if writable %}<a href="{{ url_for('admin.exam_form',eid=e.id) }}">Edit examination →</a>{% endif %}
+    </div>
+    {% for key,label in [('creation','Examiner slot creation'),('booking','Student slot booking')] %}
+      <div class="line">
+        <div>
+          <strong>{{ label }}</strong><small>{{ e[key+'_start']|when }} — {{ e[key+'_end']|when }}</small>
+        </div>
+        {% if admin %}
+          <span>{{ 'Enabled' if e[key+'_enabled'] else 'Disabled' }}</span>
+          {% if writable %}
+            {{ action(url_for('admin.change_phase',eid=e.id) ,'Disable' if e[key+'_enabled'] else 'Enable',{'action':key+('_off' if e[key+'_enabled'] else '_on')}) }}
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </section>
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Examination slots</h2>
+      {% if g.user.role=='examiner' and my_assignment and phase(e)=='Slot Creation' %}
+        <a class="btn btn-primary"
+           href="{{ url_for('portal.slot_form',eid=e.id) }}">Create slot</a>
+      {% endif %}
+    </div>
+    {{ slot_table(slots,g.user.role,e,existing) }}
+  </section>
+  {% if admin %}
+    <section class="panel">
+      <h2>Examiner assignments</h2>
+      {% for u in assigned %}
+        <div class="line">
+          <strong>{{ u.name }}</strong><span>{{ u.department }}</span>
+          {% if writable %}
+            {{ action(url_for('admin.assign',eid=e.id) ,'Remove assignment',{'action':'remove','examiner_id':u.id}) }}
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="empty">No examiners assigned.</p>
+      {% endfor %}
+      {% if writable %}
+        <form class="filter"
+              method="post"
+              action="{{ url_for('admin.assign',eid=e.id) }}">
+          {{ csrf() }}
+          <input type="hidden" name="action" value="add">
+          <label>
+            Approved examiner
+            <select class="form-select" name="examiner_id" required>
+              <option value="">Choose examiner</option>
+              {% for u in faculty %}<option value="{{ u.id }}">{{ u.name }} · #{{ u.id }}</option>{% endfor %}
+            </select>
+          </label>
+          <button class="btn btn-primary">Assign examiner</button>
+        </form>
+      {% endif %}
+    </section>
+  {% endif %}
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Evaluation rubric</h2>
+      <span>{{ rubrics|sum(attribute='weight') }}% allocated</span>
+    </div>
+    {% macro rubricform(r={}) %}
+      <form class="formgrid inset"
+            method="post"
+            action="{{ url_for('admin.rubric',eid=e.id) }}">
+        {{ csrf() }}
+        {% if r %}<input type="hidden" name="rubric_id" value="{{ r.id }}">{% endif %}
+        {{ input('name','Criterion name',r.name) }}{{ input('maximum','Criterion maximum',r.maximum,'number',min=1) }}{{ input('weight','Weight (%)',r.weight,'number',min=1,max=100) }}{{ area('description','Description',r.description) }}
+        <div>
+          <button class="btn btn-primary">Save criterion</button>
+        </div>
+      </form>
+    {% endmacro %}
+    {% for r in rubrics %}
+      <div class="line">
+        <div>
+          <strong>{{ r.name }}</strong><small>{{ r.description }}</small>
+        </div>
+        <span>{{ r.maximum }} marks · {{ r.weight }}%</span>
+        {% if writable and not rubric_locked %}
+          {{ action(url_for('admin.rubric',eid=e.id) ,'Remove',{'action':'remove','rubric_id':r.id}) }}
+        {% endif %}
+      </div>
+      {% if writable and not rubric_locked %}
+        <details>
+          <summary>Edit {{ r.name }}</summary>
+          {{ rubricform(r) }}
+        </details>
+      {% endif %}
+    {% else %}
+      <p class="empty">No evaluation criteria have been added.</p>
+    {% endfor %}
+    {% if writable and not rubric_locked %}
+      <details>
+        <summary>Add criterion</summary>
+        {{ rubricform() }}
+      </details>
+    {% endif %}
+  </section>
+  {% if admin and not e.archived %}
+    <section class="panel">
+      <h2>Examination records</h2>
+      <details>
+        <summary>Completion and archival</summary>
+        <p>
+          Complete an exam after its slots end and all bookings are evaluated. Archiving removes it from the active register and retains its records.
+        </p>
+        {% if not e.completed %}
+          {{ action(url_for('admin.change_phase',eid=e.id) ,'Mark completed',{'action':'complete'}) }}
+        {% endif %}
+        {{ action(url_for('admin.change_phase',eid=e.id) ,'Archive examination',{'action':'archive'}) }}
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}

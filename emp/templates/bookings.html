@@ -1,0 +1,19 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,booking_table with context %}
+{% block title %}Bookings{% endblock %}
+{% block body %}
+  {{ heading(g.user.role+' workspace','Bookings','Current bookings and historical records.') }}
+  <form class="filter">
+    <label>
+      Search bookings
+      <input class="form-control"
+             name="q"
+             value="{{ request.args.get('q', '') }}"
+             placeholder="Booking ID, student, examiner, or exam">
+    </label>
+    <button class="btn btn-primary">Search</button>
+    <a href="{{ url_for('portal.bookings') }}">Clear</a>
+  </form>
+  <section class="panel">
+    {{ booking_table(bookings,g.user.role) }}
+  </section>
+{% endblock %}

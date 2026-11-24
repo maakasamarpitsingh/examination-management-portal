@@ -1,0 +1,21 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,csrf,input,area with context %}
+{% block title %}Evaluate student{% endblock %}
+{% block body %}
+  {{ heading('Booking #'+b.id|string,'Evaluate '+b.student,b.exam) }}
+  <section class="panel narrow">
+    <p>Enter a raw mark for every criterion. The weighted result is scaled to {{ b.maximum }} marks.</p>
+    <form class="formgrid" method="post">
+      {{ csrf() }}
+      {% for r in rubric %}
+        <div class="span">
+          {{ input('mark_'+r.id|string,r.name+' · '+r.weight|string+'% (out of '+r.maximum|string+')',type='number',min=0,max=r.maximum,step='any') }}<small>{{ r.description }}</small>
+        </div>
+      {% endfor %}
+      {{ area('remarks','Evaluation remarks',required=true) }}
+      <p class="span">Submitting finalises these marks. The administrator publishes the result to the student.</p>
+      <div class="span">
+        <button class="btn btn-primary">Submit evaluation</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

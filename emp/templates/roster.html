@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,booking_table with context %}
+{% block title %}Slot #{{ s.id }} roster{% endblock %}
+{% block body %}
+  {{ heading('Slot #'+s.id|string,'Slot roster',s.exam+' · '+s.room+' · '+(s.start|when) ) }}
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>Student bookings</h2>
+      <a href="{{ url_for('portal.exam',eid=s.exam_id) }}">Examination →</a>
+    </div>
+    {{ booking_table(bookings,g.user.role) }}
+  </section>
+  {% if transfers %}
+    <section class="panel">
+      <h2>Examiner changes</h2>
+      <ol class="history">
+        {% for t in transfers %}
+          <li>
+            <strong>{{ t.previous }} → {{ t.replacement }}</strong>
+            <p>{{ t.reason }}</p>
+            <small>{{ t.at|when }} · {{ t.actor }}</small>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+{% endblock %}

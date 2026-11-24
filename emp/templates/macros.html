@@ -1,0 +1,122 @@
+{% macro csrf() %}
+  <input type="hidden" name="csrf" value="{{ session.csrf }}">
+{% endmacro %}
+{% macro input(name,label,value='',type='text',required=true, min=none,max=none,step=none) %}
+  <label class="field">
+    {{ label }}
+    <input class="form-control"
+           type="{{ type }}"
+           name="{{ name }}"
+           value="{{ value if value is not none else '' }}"
+           {% if required %}required{% endif %}
+           {% if min is not none %}min="{{ min }}"{% endif %}
+           {% if max is not none %}max="{{ max }}"{% endif %}
+           {% if step %}step="{{ step }}"{% endif %}>
+  </label>
+{% endmacro %}
+{% macro area(name,label,value='',required=false) %}
+  <label class="field span">
+    {{ label }}<textarea class="form-control" rows="3" name="{{ name }}" {% if required %}required{% endif %}>{{ value }}</textarea>
+  </label>
+{% endmacro %}
+{% macro badge(value) %}
+  <span class="tag {{ 'green' if value in ['Booking Open','Active','Published','Available','Booked'] else ('gold' if value in ['Pending','Full','Slot Creation','Awaiting publication'] else '') }}">{{ value }}</span>
+{% endmacro %}
+{% macro action(url,label, data={}, style='btn-outline-secondary') %}
+  <form class="inline" action="{{ url }}" method="post">
+    {{ csrf() }}
+    {% for k,v in data.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <button class="btn btn-sm {{ style }}">{{ label }}</button>
+  </form>
+{% endmacro %}
+{% macro heading(kicker,title,subtitle='') %}
+  <header class="heading">
+    <div class="eyeline">{{ kicker }}</div>
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </header>
+{% endmacro %}
+{% macro slot_table(slots, role, e=none, existing=none) %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Slot / location</th>
+          <th>Schedule</th>
+          <th>Examiner</th>
+          <th>Seats left</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in slots %}
+          <tr>
+            <td>
+              <strong>#{{ s.id }} · {{ s.room }}</strong>
+              {% if role!='student' %}<small><a href="{{ url_for('portal.roster',sid=s.id) }}">View roster</a></small>{% endif %}
+              {% if not e %}<small><a href="{{ url_for('portal.exam',eid=s.exam_id) }}">{{ s.exam }}</a></small>{% endif %}
+            </td>
+            <td>
+              {{ s.start|when }}<small>Ends {{ s.end|when }}</small>
+            </td>
+            <td>{{ s.examiner }}</td>
+            <td>{{ s.seats }} / {{ s.capacity }}</td>
+            <td>{{ badge(slot_status(s) ) }}</td>
+            <td>
+              {% if role=='admin' and not s.cancelled and (not e or not (e.completed or e.archived)) and (s.end>now() or s.pending_count) %}
+                <a href="{{ url_for('portal.reassign',sid=s.id) }}">Reassign</a>
+              {% elif role=='examiner' and e and now()<e.booking_start and not (e.archived or e.completed or s.cancelled) %}
+                <a href="{{ url_for('portal.slot_form',eid=e.id,sid=s.id) }}">Edit slot</a>
+              {% elif role=='student' and e and phase(e)=='Booking Open' and not existing and slot_status(s)=='Available' and s.start>now() and s.examiner_status=='Active' %}
+                {{ action(url_for('portal.book',sid=s.id) ,'Book slot',style='btn-primary') }}
+              {% elif role=='student' and existing %}
+                <a href="{{ url_for('portal.booking',bid=existing.id) }}">My booking</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty">No slots to display.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}
+{% macro booking_table(bookings,role) %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Booking / examination</th>
+          <th>Scheduled for</th>
+          <th>{{ 'Examiner' if role=='student' else 'Student' }}</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+          <tr>
+            <td>
+              <strong>{{ b.exam }}</strong><small>Booking #{{ b.id }} · Slot #{{ b.slot_id }}</small>
+            </td>
+            <td>{{ b.start|when }}</td>
+            <td>{{ b.examiner if role=='student' else b.student }}</td>
+            <td>{{ badge(b.status) }}</td>
+            <td>
+              <a href="{{ url_for('portal.booking',bid=b.id) }}">Details →</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="empty">No bookings to display.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

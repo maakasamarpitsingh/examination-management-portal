@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Workspace{% endblock %} · Examination Office</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='office.css') }}">
+  </head>
+  <body>
+    <a class="visually-hidden-focusable skip" href="#content">Skip to content</a>
+    {% set signed = g.user and g.user.status == 'Active' %}
+    {% set endpoint = request.endpoint %}
+    {% macro tab(label, url, active) %}
+      <a href="{{ url }}" {% if active %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endmacro %}
+    <div class="page">
+      <header class="masthead">
+        <a class="brand" href="{{ url_for('portal.home') if signed else url_for('auth.login') }}">
+          <span class="brandmark" aria-hidden="true"></span>
+          <span class="wordmark">
+            <strong>Examination Office</strong>
+            <span>College examination management portal</span>
+          </span>
+        </a>
+        <span class="pediment" aria-hidden="true"></span>
+      </header>
+      <div class="navrow">
+        <nav aria-label="Main navigation">
+          {% if signed %}
+            {{ tab('Overview',url_for('portal.home'),endpoint=='portal.home') }}
+            {{ tab('Examinations',url_for('portal.exams'),endpoint in ('portal.exams','portal.exam','admin.exam_form','portal.slot_form')) }}
+            {% if g.user.role=='admin' %}
+              {{ tab('Courses',url_for('admin.courses'),endpoint in ('admin.courses','admin.course_form')) }}
+              {% for role_name,label in [('examiner','Examiners'),('student','Students')] %}
+                {{ tab(label,url_for('admin.people',role=role_name),endpoint=='admin.people' and request.args.get('role','examiner')==role_name) }}
+              {% endfor %}
+            {% endif %}
+            {% if g.user.role!='student' %}
+              {{ tab('Slots',url_for('portal.slots'),endpoint in ('portal.slots','portal.roster','portal.reassign')) }}
+            {% endif %}
+            {{ tab('Bookings',url_for('portal.bookings'),endpoint in ('portal.bookings','portal.booking','portal.evaluate','portal.reschedule')) }}
+          {% else %}
+            {{ tab('Sign in',url_for('auth.login'),endpoint=='auth.login') }}
+            {{ tab('Register',url_for('auth.register'),endpoint=='auth.register') }}
+          {% endif %}
+        </nav>
+        {% if signed %}
+          <details class="account">
+            <summary>{{ 'Administrator' if g.user.role=='admin' else g.user.role|title }}</summary>
+            <div class="accountmenu">
+              <strong>{{ g.user.name }}</strong>
+              <a href="{{ url_for('auth.profile') }}">My profile</a>
+              <form method="post" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf" value="{{ session.csrf }}">
+                <button type="submit">Sign out</button>
+              </form>
+            </div>
+          </details>
+        {% endif %}
+      </div>
+      <main id="content" class="{{ 'work' if signed else 'guest' }}">
+        {% for msg in get_flashed_messages() %}<div class="notice" role="status">{{ msg }}</div>{% endfor %}
+        {% block body %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge with context %}
+{% block title %}Examinations{% endblock %}
+{% block body %}
+  <div class="titlebar">
+    {{ heading('Examination register', 'Examinations') }}
+    {% if g.user.role=='admin' %}
+      <a class="btn btn-primary" href="{{ url_for('admin.exam_form') }}">Create examination</a>
+    {% endif %}
+  </div>
+  <form class="filter" method="get">
+    <label>
+      Search
+      <input class="form-control"
+             name="q"
+             value="{{ request.args.get('q', '') }}"
+             placeholder="Exam name, ID, or course">
+    </label>
+    {% for key,label,opts in [('kind','Type',kinds),('phase','Phase',['Draft','Slot Creation','Booking Open','Closed','Completed','Archived'])] %}
+      <label>
+        {{ label }}
+        <select class="form-select" name="{{ key }}">
+          <option value="">All</option>
+          {% for v in opts %}
+            <option {% if request.args.get(key)==v %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    {% endfor %}
+    <button class="btn btn-primary">Filter</button>
+    <a href="{{ url_for('portal.exams') }}">Clear</a>
+  </form>
+  <div class="cards">
+    {% for e in exams %}
+      <article class="examcard">{{ badge(phase(e) ) }}<small>{{ e.code }} · EXAM #{{ e.id }}</small>
+        <h2>
+          <a href="{{ url_for('portal.exam',eid=e.id) }}">{{ e.name }}</a>
+        </h2>
+        <p>{{ e.course_name }}</p>
+        <footer>
+          {{ e.kind }} · {{ e.duration }} min <a aria-label="Open {{ e.name }}"
+    href="{{ url_for('portal.exam',eid=e.id) }}">Open →</a>
+        </footer>
+      </article>
+    {% else %}
+      <div class="panel empty">No examinations match your search.</div>
+    {% endfor %}
+  </div>
+{% endblock %}

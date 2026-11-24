@@ -1,0 +1,111 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,badge,booking_table,slot_table,action with context %}
+{% block title %}Overview{% endblock %}
+{% block body %}
+  {% set role = g.user.role %}
+  <div class="titlebar overview-title">
+    <h1>{{ {'admin':'Examination overview','examiner':'Examiner overview','student':'Student overview'}[role] }}</h1>
+    <a class="btn btn-primary" href="{{ url_for('admin.exam_form') if role=='admin' else url_for('portal.exams') }}">
+      {{ 'Create examination' if role=='admin' else 'Browse examinations' }}
+    </a>
+  </div>
+  <div class="stats">
+    {% for label,n in counts %}
+      <div>
+        <span>{{ label }}</span><strong>{{ n }}</strong>
+      </div>
+    {% endfor %}
+  </div>
+  {% if role=='admin' %}
+    <div class="spread">
+      <section class="column">
+        <h2>Examination schedule</h2>
+        <div class="table-responsive">
+          <table class="table timetable">
+            <thead><tr><th>Examination</th><th>Date</th><th>Time</th><th>Venue</th></tr></thead>
+            <tbody>
+              {% for s in schedule %}
+                <tr>
+                  <td><a href="{{ url_for('portal.roster',sid=s.id) }}">{{ s.exam }}</a></td>
+                  <td data-label="Date">{{ s.start|schedule_date }}</td>
+                  <td data-label="Time">{{ s.start[11:16] }} – {% if s.start[:10]!=s.end[:10] %}{{ s.end|schedule_date }} {% endif %}{{ s.end[11:16] }}</td>
+                  <td data-label="Venue">{{ s.room }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="empty">No upcoming sittings are scheduled.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <a class="sectionlink" href="{{ url_for('portal.slots') }}">All examination slots →</a>
+      </section>
+      <section class="column approvals">
+        <h2>Examiner approvals</h2>
+        <div class="subhead">Pending ({{ approval_count }})</div>
+        {% for u in focus %}
+          <div class="line">
+            <div><strong>{{ u.name }}</strong><small>{{ u.department }}</small></div>
+            {{ action(url_for('admin.user_status',uid=u.id),'Approve',{'status':'Active','return_to':'overview'},style='btn-primary') }}
+          </div>
+        {% else %}
+          <p class="empty">All examiner registrations have been reviewed.</p>
+        {% endfor %}
+        <a class="sectionlink" href="{{ url_for('admin.people',role='examiner') }}">Examiner register →</a>
+      </section>
+    </div>
+  {% endif %}
+  {% if role=='examiner' %}
+    <section class="panel">
+      <h2>Pending evaluations</h2>
+      {{ booking_table(pending,role) }}
+    </section>
+    <section class="panel">
+      <div class="sectionhead">
+        <h2>My slots</h2>
+        <a href="{{ url_for('portal.slots') }}">All slots →</a>
+      </div>
+      {{ slot_table(focus,role) }}
+    </section>
+  {% endif %}
+  {% if role=='student' %}
+    <section class="panel">
+      <h2>Upcoming examinations</h2>
+      {{ booking_table(upcoming,role) }}
+    </section>
+    <section class="panel">
+      <h2>Available slots</h2>
+      {% for s in focus %}
+        <div class="line">
+          <a href="{{ url_for('portal.exam',eid=s.exam_id) }}">{{ s.exam }}</a><span>{{ s.start|when }} · {{ s.room }}</span><strong>{{ s.seats }} seats left</strong>
+        </div>
+      {% else %}
+        <p class="empty">No slots are currently available to book.</p>
+      {% endfor %}
+    </section>
+    <section class="panel">
+      <h2>Published results</h2>
+      {% for b in results %}
+        <div class="line">
+          <a href="{{ url_for('portal.booking',bid=b.id) }}">{{ b.exam }}</a><strong>{{ b.total|round(2) }} / {{ b.maximum }}</strong>
+        </div>
+      {% else %}
+        <p class="empty">Your published marks and feedback will appear here.</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+  <section class="panel">
+    <div class="sectionhead">
+      <h2>{{ 'Assigned examinations' if role=='examiner' else 'Examinations' }}</h2>
+      <a href="{{ url_for('portal.exams') }}">View all →</a>
+    </div>
+    {% for e in exams %}
+      <div class="line">
+        <div>
+          <a href="{{ url_for('portal.exam',eid=e.id) }}">{{ e.name }}</a><small>{{ e.code }} · {{ e.kind }}</small>
+        </div>
+        {{ badge(phase(e) ) }}
+      </div>
+    {% else %}
+      <p class="empty">No examinations to display.</p>
+    {% endfor %}
+  </section>
+{% endblock %}

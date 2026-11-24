@@ -1,0 +1,99 @@
+{% extends 'base.html' %}{% from 'macros.html' import heading,csrf,input,area,action with context %}
+{% set titletext = {'course':('Edit course' if item else 'Create course'),'exam':('Edit examination' if item else 'Create examination'),'slot':('Edit slot' if item else 'Create slot'),'reassign':'Change examiner','reschedule':'Reschedule booking'}[kind] %}
+{% block title %}{{ titletext }}{% endblock %}
+{% block body %}
+  {{ heading(g.user.role+' workspace',titletext) }}
+  <section class="panel narrow">
+    <form method="post" class="formgrid">
+      {{ csrf() }}
+      {% if kind=='course' %}
+        {{ input('code','Course code',item.code) }}{{ input('name','Course name',item.name) }}{{ area('description','Description',item.description) }}
+        <label class="field">
+          Status
+          <select class="form-select" name="status">
+            {% for v in ['Active','Inactive'] %}
+              <option {% if item.status==v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      {% elif kind=='exam' %}
+        <label class="field">
+          Course
+          <select class="form-select" name="course_id" required>
+            <option value="">Choose course</option>
+            {% for c in courses %}
+              <option value="{{ c.id }}" {% if c.id==item.course_id %}selected{% endif %}>{{ c.code }} · {{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {{ input('name','Examination name',item.name) }}
+        <label class="field">
+          Examination type
+          <select name="kind" class="form-select">
+            {% for k in kinds %}
+              <option {% if k==item.kind %}selected{% endif %}>{{ k }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {{ input('duration','Slot duration (minutes)',item.duration,'number',min=1,max=1440) }}{{ input('maximum','Maximum marks',item.maximum,'number',min=1) }}
+        <div class="span">
+          <h2>Examination timeline</h2>
+          <p>Use campus local time. The booking window starts after slot creation ends.</p>
+        </div>
+        {% for key,label in [('creation_start','Slot creation opens'),('creation_end','Slot creation closes'),('booking_start','Booking opens'),('booking_end','Booking closes')] %}
+          {{ input(key,label,item[key],'datetime-local') }}
+        {% endfor %}
+      {% elif kind=='slot' %}
+        <div class="span">
+          <h2>{{ e.name }}</h2>
+          <p>Each slot lasts {{ e.duration }} minutes. The earliest start is {{ e.booking_end|when }}.</p>
+        </div>
+        {{ input('start','Start time',item.start,'datetime-local',min=e.booking_end) }}{{ input('capacity','Student capacity',item.capacity,'number',min=1) }}{{ input('room','Room or meeting location',item.room) }}
+      {% elif kind=='reschedule' %}
+        <p class="span">
+          Booking #{{ item.id }} · {{ item.student }} · {{ item.exam }}
+          <br>
+          Current slot #{{ item.slot_id }} · {{ item.start|when }}
+        </p>
+        <label class="field span">
+          New slot
+          <select class="form-select" name="slot_id" required>
+            <option value="">Choose an available slot</option>
+            {% for s in choices %}
+              <option value="{{ s.id }}">#{{ s.id }} · {{ s.start|when }} · {{ s.examiner }} · {{ s.seats }} free</option>
+            {% endfor %}
+          </select>
+        </label>
+        {{ input('reason', 'Reason for rescheduling') }}
+        {% if not choices %}<p class="span">No alternative slots are currently available for this examination.</p>{% endif %}
+      {% elif kind=='reassign' %}
+        <p class="span">
+          {{ item.exam }} · Slot #{{ item.id }} · {{ item.start|when }}
+          <br>
+          Currently assigned to {{ item.examiner }}.
+        </p>
+        <label class="field">
+          New examiner
+          <select class="form-select" name="examiner_id" required>
+            <option value="">Choose examiner</option>
+            {% for u in faculty %}<option value="{{ u.id }}">{{ u.name }} · {{ u.department }}</option>{% endfor %}
+          </select>
+        </label>
+        {{ input('reason', 'Reason for reassignment') }}
+      {% endif %}
+      <div class="span">
+        <button class="btn btn-primary">
+          Save {{ {'exam':'examination','course':'course','slot':'slot','reschedule':'reschedule','reassign':'assignment'}[kind] }}
+        </button>
+      </div>
+    </form>
+  </section>
+  {% if kind=='slot' and item %}
+    <section class="panel narrow">
+      <details>
+        <summary>Remove slot</summary>
+        {{ action(url_for('portal.slot_form',eid=e.id,sid=item.id) ,'Confirm removal',{'action':'remove'}) }}
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}
